@@ -31,12 +31,17 @@ void OptixScene::load_obj(const std::string& path,
     const auto& shapes = reader.GetShapes();
 
     const bool hasNormalsInFile = !attrib.normals.empty();
+    const bool hasTexcoordsInFile = !attrib.texcoords.empty();
     const size_t vertexCount = attrib.vertices.size() / 3;
 
     std::vector<float3> accumulatedNormals(vertexCount, make_float3(0.0f, 0.0f, 0.0f));
 
     auto to_float3 = [](float x, float y, float z) -> float3 {
         return make_float3(x, y, z);
+        };
+
+    auto to_float2 = [](float x, float y) -> float2 {
+        return make_float2(x, y);
         };
 
     auto add = [](const float3& a, const float3& b) -> float3 {
@@ -164,9 +169,11 @@ void OptixScene::load_obj(const std::string& path,
             tinyobj::index_t indices[3];
             float3 positions[3];
             float3 normals[3];
+            float2 uvs[3];
 
             bool validTriangle = true;
             bool useVertexNormals = true;
+            bool useUVs = true;
 
             for (int v = 0; v < 3; ++v) {
                 indices[v] = shape.mesh.indices[index_offset + v];
@@ -189,6 +196,7 @@ void OptixScene::load_obj(const std::string& path,
                 p = add(mul(p, scale), translation);
                 positions[v] = p;
 
+                // Normals
                 if (hasNormalsInFile) {
                     if (idx.normal_index >= 0) {
                         const int ni = idx.normal_index;
@@ -199,9 +207,6 @@ void OptixScene::load_obj(const std::string& path,
                             attrib.normals[3 * ni + 2]
                         );
 
-                        // Bei non-uniform scale sollten Normalen eigentlich mit inverse-transpose
-                        // transformiert werden. Die alte CPU-Version hat das nicht gemacht.
-                        // Hier übernehmen wir das Verhalten 1:1.
                         normals[v] = normalize_safe(n, make_float3(0.0f, 1.0f, 0.0f));
                     }
                     else {
@@ -210,6 +215,27 @@ void OptixScene::load_obj(const std::string& path,
                 }
                 else {
                     normals[v] = accumulatedNormals[vi];
+                }
+
+                // UVs
+                if (hasTexcoordsInFile) {
+                    if (idx.texcoord_index >= 0) {
+                        const int ti = idx.texcoord_index;
+
+                        float u = attrib.texcoords[2 * ti + 0];
+                        float t = attrib.texcoords[2 * ti + 1];
+
+                        // OBJ speichert meist V nach oben; falls deine Texturen auf dem Kopf stehen:
+                        // t = 1.0f - t;
+
+                        uvs[v] = to_float2(u, t);
+                    }
+                    else {
+                        useUVs = false;
+                    }
+                }
+                else {
+                    useUVs = false;
                 }
             }
 
@@ -243,6 +269,10 @@ void OptixScene::load_obj(const std::string& path,
             geom.triangle.n1 = make_float3(0.0f, 0.0f, 0.0f);
             geom.triangle.n2 = make_float3(0.0f, 0.0f, 0.0f);
 
+            geom.triangle.uv0 = make_float2(0.0f, 0.0f);
+            geom.triangle.uv1 = make_float2(0.0f, 0.0f);
+            geom.triangle.uv2 = make_float2(0.0f, 0.0f);
+
             if (hasNormalsInFile) {
                 if (useVertexNormals) {
                     geom.triangle.hasVertexNormals = true;
@@ -258,10 +288,15 @@ void OptixScene::load_obj(const std::string& path,
                 geom.triangle.n2 = normals[2];
             }
 
-            _geometry.push_back(geom); 
+            if (useUVs) {
+                geom.triangle.uv0 = uvs[0];
+                geom.triangle.uv1 = uvs[1];
+                geom.triangle.uv2 = uvs[2];
+            }
+
+            _geometry.push_back(geom);
 
             index_offset += fv;
         }
     }
-
 }

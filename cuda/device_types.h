@@ -48,9 +48,11 @@ enum class MaterialType {
 struct Material {
     MaterialType type;
     float3 color;  // albedo for diffuse, F0 for metals
+    uint32_t colorTexIdx;
     float3 emission;
     float3 reflectance;
     float alpha;
+    uint32_t alphaTexIdx;
     float eta;
     bool isDelta = false;
     bool hasNormalMap = false;
@@ -65,6 +67,9 @@ struct TriangleData {
     float3 n0;
     float3 n1;
     float3 n2;
+    float2 uv0;
+    float2 uv1;
+    float2 uv2;
 };
 
 struct GeometryData {
@@ -137,6 +142,7 @@ struct LaunchParams {
     Light* lights;
     size_t numLights;
     Material* materials;
+    cudaTextureObject_t* textures;
     cudaTextureObject_t envmap;
     bool envmapEnabled;
 

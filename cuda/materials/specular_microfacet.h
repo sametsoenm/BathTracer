@@ -17,7 +17,7 @@ __forceinline__ __device__ float pdf_specular_microfacet(
     const float3 wi_local = onb.to_local(wi);
     const float3 wh_local = normalize(wo_local + wi_local);
 
-    const float alpha = mat.alpha;
+    const float alpha = tex2D<float4>(params.textures[mat.alphaTexIdx], data.uv.x, data.uv.y).x;
     const float G1 = material::G1_smith(alpha, wo_local, wh_local);
     const float D = material::NDF_GGX(alpha, wh_local);
     const float wo_dot_wh = dot(wo_local, wh_local);
@@ -46,8 +46,10 @@ __forceinline__ __device__ float3 eval_specular_microfacet(
     const float3 wh_local = normalize(wo_local + wi_local);
     const float wo_dot_wh = max(0.0f, dot(wo_local, wh_local));
 
-    const float3 f0 = mat.color;
-    const float alpha = mat.alpha;
+    const float3 f0 = make_float3(
+        tex2D<float4>(params.textures[mat.colorTexIdx], data.uv.x, data.uv.y)
+    );
+    const float alpha = tex2D<float4>(params.textures[mat.alphaTexIdx], data.uv.x, data.uv.y).x;
     const float3 F = material::fresnel_schlick(f0, wo_dot_wh);
     const float D = material::NDF_GGX(alpha, wh_local);
     const float G = material::G_smith(alpha, wi_local, wo_local, wh_local);
@@ -67,7 +69,7 @@ __forceinline__ __device__ BSDFSample sample_specular_microfacet(
 
     Onb onb(data.geo_normal);
     const float3 wo_local = onb.to_local(wo);
-    const float alpha = mat.alpha;
+    const float alpha = tex2D<float4>(params.textures[mat.alphaTexIdx], data.uv.x, data.uv.y).x;
     const float3 wh_local = sampling::sampleGGXVNDF(alpha, wo_local, u);
     const float3 wi_local = reflect(-wo_local, wh_local);
 

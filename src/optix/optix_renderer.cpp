@@ -26,6 +26,7 @@ void OptixRenderer::init(const uint32_t width, const uint32_t height) {
     createPipeline();
     createSbt();
     loadEnvironment();
+    loadTextures();
     buildMesh();
     allocateBuffers(width, height);
 }
@@ -511,9 +512,96 @@ void OptixRenderer::loadEnvironment() {
     _state.params.envmapEnabled = _scene->envmapEnabled();
 }
 
+void OptixRenderer::loadTextures() {
+    const auto& sceneTextures = _scene->textures();
+    _state.d_texArrays.reserve(sceneTextures.size());
+    _state.textures.reserve(sceneTextures.size());
+
+    for (const auto& tex : sceneTextures) {
+
+        const size_t width = tex.width();
+        const size_t height = tex.height();
+        std::vector<float4> pixelsGPU;
+        pixelsGPU.reserve(width * height);
+
+        for (const glm::vec3& p : tex.pixels())
+        {
+            pixelsGPU.push_back(make_float4(p.x, p.y, p.z, 1.0f));
+        }
+
+        cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>();
+
+        cudaArray_t texArray = nullptr;
+        CUDA_RT_CHECK(cudaMallocArray(
+            &texArray,
+            &channelDesc,
+            static_cast<size_t>(width),
+            static_cast<size_t>(height)
+        ));
+
+        CUDA_RT_CHECK(cudaMemcpy2DToArray(
+            texArray,
+            0, 0,
+            pixelsGPU.data(),
+            width * sizeof(float4),
+            width * sizeof(float4),
+            height,
+            cudaMemcpyHostToDevice
+        ));
+
+        cudaResourceDesc resDesc = {};
+        resDesc.resType = cudaResourceTypeArray;
+        resDesc.res.array.array = texArray;
+
+        cudaTextureDesc texDesc = {};
+        texDesc.addressMode[0] = cudaAddressModeWrap;
+        texDesc.addressMode[1] = cudaAddressModeWrap;
+        texDesc.filterMode = cudaFilterModeLinear;
+        texDesc.readMode = cudaReadModeElementType;
+        texDesc.normalizedCoords = 1;
+
+        cudaTextureObject_t texObj = 0;
+        CUDA_RT_CHECK(cudaCreateTextureObject(
+            &texObj,
+            &resDesc,
+            &texDesc,
+            nullptr
+        ));
+
+        _state.d_texArrays.push_back(texArray);
+        _state.textures.push_back(texObj);
+    }
+    if (!_state.textures.empty())
+    {
+        const size_t bufferSize =
+            _state.textures.size() * sizeof(cudaTextureObject_t);
+
+        CUDA_CHECK(cuMemAlloc(&_state.d_textures, bufferSize));
+
+        CUDA_CHECK(cuMemcpyHtoD(
+            _state.d_textures,
+            _state.textures.data(),
+            bufferSize
+        ));
+
+        _state.params.textures =
+            reinterpret_cast<cudaTextureObject_t*>(_state.d_textures);
+    }
+
+}
+
 void OptixRenderer::reloadScene() {
 
     // destroy old
+    for (cudaTextureObject_t tex : _state.textures)
+        CUDA_RT_CHECK(cudaDestroyTextureObject(tex));
+    _state.textures.clear();
+    for (cudaArray_t arr : _state.d_texArrays)
+        CUDA_RT_CHECK(cudaFreeArray(arr));
+    _state.d_texArrays.clear();
+    CUDA_CHECK(cuMemFree(_state.d_textures));
+    _state.d_textures = 0;
+    _state.params.textures = 0;
     CUDA_CHECK(cuMemFree(_state.d_lights));
     _state.d_lights = 0;
     CUDA_CHECK(cuMemFree(_state.d_mats));
@@ -538,6 +626,7 @@ void OptixRenderer::reloadScene() {
 
     buildMesh();
     reloadEnvironment();
+    loadTextures();
 
 }
 
@@ -601,6 +690,11 @@ void OptixRenderer::shutdown() {
 
     CUDA_RT_CHECK(cudaDestroyTextureObject(_state.envTexture));
     CUDA_RT_CHECK(cudaFreeArray(_state.d_envArray));
+    for (const auto& tex : _state.textures)
+        cudaDestroyTextureObject(tex);
+    for (const auto& arr : _state.d_texArrays)
+        cudaFreeArray(arr);
+    CUDA_CHECK(cuMemFree(_state.d_textures));
     CUDA_CHECK(cuMemFree(_state.d_lights));
     CUDA_CHECK(cuMemFree(_state.d_mats));
     CUDA_CHECK(cuMemFree(_state.d_vertices));

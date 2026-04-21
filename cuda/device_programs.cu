@@ -167,20 +167,21 @@ extern "C" __global__ void __closesthit__ch()
     const TriangleData& tri = params.geometry[primIdx].triangle;
     const float3 N_0 = tri.normalFlat;
     data.geo_normal = faceforward(N_0, -rayDir, N_0);
+    const float2 bary = optixGetTriangleBarycentrics();
+    const float u = bary.x;
+    const float v = bary.y;
+    const float w = 1.0f - u - v;
     if (!tri.hasVertexNormals) {
         data.shading_normal = data.geo_normal;
     }
     else {
-        const float2 bary = optixGetTriangleBarycentrics();
-        const float u = bary.x;
-        const float v = bary.y;
-        const float w = 1.0f - u - v;
         data.shading_normal = normalize(w * tri.n0 + u * tri.n1 + v * tri.n2);
         data.shading_normal = 
             faceforward(data.shading_normal, data.geo_normal, data.shading_normal);
     }
     data.front_face = dot(N_0, data.geo_normal) > 0.0f;
-    data.pos = rayO + data.t * rayDir;
+    data.pos = rayO + data.t * rayDir; 
+    data.uv = w * tri.uv0 + u * tri.uv1 + v * tri.uv2;
 
     const Material& mat = params.materials[params.geometry[primIdx].materialIndex];
 
@@ -198,7 +199,7 @@ extern "C" __global__ void __closesthit__ch()
     prd.prevScatterPdf = __uint_as_float(optixGetPayload_19());
 
     // shading
-    shadePT(prd, data, mat);
+    shadeNEE(prd, data, mat);
 
 
     optixSetPayload_0(__float_as_uint(prd.attenuation.x));

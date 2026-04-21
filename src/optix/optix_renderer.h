@@ -33,6 +33,9 @@ struct PathTracerState
 	CUdeviceptr d_mats = 0;
 	cudaArray_t d_envArray = 0;
 	cudaTextureObject_t envTexture = 0;
+	CUdeviceptr d_textures = 0;
+	std::vector<cudaArray_t> d_texArrays;
+	std::vector<cudaTextureObject_t> textures;
 
 	OptixModule module = 0;
 	OptixPipelineCompileOptions pipelineCompileOptions = {};
@@ -88,6 +91,7 @@ private:
 	void createSbt();
 	void allocateBuffers(const uint32_t width, const uint32_t height);
 	void loadEnvironment();
+	void loadTextures();
 	void updateParams();
 	void launch();
 

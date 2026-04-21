@@ -27,7 +27,11 @@ __forceinline__ __device__ float3 eval_lambert_diffuse(
 	const float cosTheta = dot(data.geo_normal, wi) > 0.0f
 		? max(0.0f, dot(N, wi)) : 0.0f;
 
-	return (mat.color / M_PIf) * cosTheta;
+	const float3 albedo = make_float3(
+		tex2D<float4>(params.textures[mat.colorTexIdx], data.uv.x, data.uv.y)
+	);
+
+	return (albedo / M_PIf) * cosTheta;
 }
 
 __forceinline__ __device__ BSDFSample sample_lambert_diffuse(
@@ -52,7 +56,11 @@ __forceinline__ __device__ BSDFSample sample_lambert_diffuse(
 		return s;
 	}
 	//printf("%d, %d, %d", mat.color.x, mat.color.y, mat.color.z); 
-	s.contrib = mat.color;
+	const float3 albedo = make_float3(
+		tex2D<float4>(params.textures[mat.colorTexIdx], data.uv.x, data.uv.y)
+	);
+
+	s.contrib = albedo;
 	s.pdf = pdf_lambert_diffuse(wi, data);
 	s.wi = wi;
 
