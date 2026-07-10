@@ -38,6 +38,22 @@ public:
 	uint32_t addRoughDielectricMaterial(const float eta, const float alpha);
 	uint32_t addSpecularMicrofacetMaterial(const glm::vec3& f0, const float alpha);
 	uint32_t addSpecularMicrofacetMaterial(const std::string& f0Path, const std::string& alphaPath);
+	uint32_t addDisneyMaterial(
+		const glm::vec3& baseColor,
+		float metallic = 0.0f,
+		float roughness = 0.5f,
+		float specular = 0.5f,
+		float specularTint = 0.0f,
+		float anisotropic = 0.0f,
+		float sheen = 0.0f,
+		float sheenTint = 0.5f,
+		float clearcoat = 0.0f,
+		float clearcoatGloss = 1.0f,
+		float specTrans = 0.0f,
+		float diffTrans = 0.0f,
+		float flatness = 0.0f,
+		float eta = 1.5f,
+		bool thin = false);
 
 	const std::vector<GeometryData>& geometry() const { return _geometry; }
 	const std::vector<Light>& lights() const { return _lights; }

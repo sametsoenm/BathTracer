@@ -74,6 +74,10 @@ endif()
 
 # ptx gen
 set(DEVICE_PTX "${CMAKE_CURRENT_BINARY_DIR}/device_programs.ptx")
+file(GLOB_RECURSE DEVICE_HEADERS CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/cuda/*.h"
+    "${CMAKE_SOURCE_DIR}/cuda/*.hpp"
+)
 
 add_custom_command(
     OUTPUT ${DEVICE_PTX}
@@ -88,7 +92,9 @@ add_custom_command(
             -I"${CMAKE_SOURCE_DIR}/cuda"
             "${CMAKE_SOURCE_DIR}/cuda/device_programs.cu"
             -o "${DEVICE_PTX}"
-    DEPENDS "${CMAKE_SOURCE_DIR}/cuda/device_programs.cu"
+    DEPENDS
+        "${CMAKE_SOURCE_DIR}/cuda/device_programs.cu"
+        ${DEVICE_HEADERS}
     COMMENT "Compiling device_programs.cu to device_programs.ptx"
 )
 

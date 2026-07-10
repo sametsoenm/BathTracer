@@ -4,6 +4,7 @@
 #include "mirror.h"
 #include "dielectric.h"
 #include "specular_microfacet.h"
+#include "disney.h"
 
 __forceinline__ __device__ BSDFSample sample_material(
 	const float3& wo,
@@ -22,6 +23,8 @@ __forceinline__ __device__ BSDFSample sample_material(
 		return sample_smooth_dielectric(wo, mat, data, u.x);
 	case MaterialType::ROUGH_DIELECTRIC:
 		return sample_rough_dielectric(wo, mat, data, u);
+	case MaterialType::DISNEY:
+		return sample_disney(wo, mat, data, u);
 	default:
 		return BSDFSample{};
 	}
@@ -44,6 +47,8 @@ __forceinline__ __device__ float pdf_material(
 		return pdf_smooth_dielectric();
 	case MaterialType::ROUGH_DIELECTRIC:
 		return pdf_rough_dielectric(wo, wi, mat, data);
+	case MaterialType::DISNEY:
+		return pdf_disney(wo, wi, mat, data);
 	default:
 		return 0.0f;
 	}
@@ -67,6 +72,8 @@ __forceinline__ __device__ float3 eval_material(
 		return eval_smooth_dielectric();
 	case MaterialType::ROUGH_DIELECTRIC:
 		return eval_rough_dielectric(wo, wi, mat, data);
+	case MaterialType::DISNEY:
+		return eval_disney(wo, wi, mat, data);
 	default:
 		return make_float3(0.0f);
 	}

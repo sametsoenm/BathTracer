@@ -187,6 +187,50 @@ uint32_t OptixScene::addSpecularMicrofacetMaterial(const std::string& f0Path, co
 	return _mats.size() - 1;
 }
 
+uint32_t OptixScene::addDisneyMaterial(
+	const glm::vec3& baseColor,
+	const float metallic,
+	const float roughness,
+	const float specular,
+	const float specularTint,
+	const float anisotropic,
+	const float sheen,
+	const float sheenTint,
+	const float clearcoat,
+	const float clearcoatGloss,
+	const float specTrans,
+	const float diffTrans,
+	const float flatness,
+	const float eta,
+	const bool thin) {
+
+	Texture tex(baseColor);
+	_textures.push_back(tex);
+
+	Material mat{};
+	mat.type = MaterialType::DISNEY;
+	mat.color = make_float3(baseColor.x, baseColor.y, baseColor.z);
+	mat.colorTexIdx = _textures.size() - 1;
+	mat.metallic = metallic;
+	mat.roughness = roughness;
+	mat.specular = specular;
+	mat.specularTint = specularTint;
+	mat.anisotropic = anisotropic;
+	mat.sheen = sheen;
+	mat.sheenTint = sheenTint;
+	mat.clearcoat = clearcoat;
+	mat.clearcoatGloss = clearcoatGloss;
+	mat.specTrans = specTrans;
+	mat.diffTrans = diffTrans;
+	mat.flatness = flatness;
+	mat.eta = eta;
+	mat.scatterDistance = 1.0f;
+	mat.transmittanceColor = make_float3(baseColor.x, baseColor.y, baseColor.z);
+	mat.thin = thin;
+	_mats.push_back(mat);
+	return _mats.size() - 1;
+}
+
 void OptixScene::cornellScene() {
 	_cam.setLookat(glm::vec3(0.0f, 0.0f, -2.0f));
 	_cam.setPosition(glm::vec3(0.0f, 0.0f, 12.0f));
@@ -202,6 +246,7 @@ void OptixScene::cornellScene() {
 	auto metal = addSpecularMicrofacetMaterial(glm::vec3(0.560f, 0.570f, 0.580f), 0.1f);
 	auto roughD = addRoughDielectricMaterial(1.85f, 0.1f);
 	auto texDiffuse = addLambertDiffuseMaterial("assets/textures/testarossa.jpg");
+	auto disney = addDisneyMaterial(glm::vec3(0.8f, 0.2f, 0.2f));
 
 	//cornell box
 	{
@@ -314,7 +359,7 @@ void OptixScene::cornellScene() {
 	//load_obj("assets/models/suzanne.obj", roughD, make_float3(5.0f, -3.0f, -8.4f), make_float3(2.0f, 2.0f, 2.0f));
 	//load_obj("assets/models/cube.obj", roughD, make_float3(0.0f, -2.99f, 0.0f), make_float3(2.0f, 2.0f, 2.0f));
 	//load_obj("assets/models/swag.obj", metal, make_float3(0.0f, -1.0f, 0.0f), make_float3(2.0f, 2.0f, 2.0f));
-	load_obj("assets/models/sphere.obj", metal, make_float3(0.0f, -2.99f, 1.0f), make_float3(2.0f, 2.0f, 2.0f));
+	load_obj("assets/models/sphere.obj", disney, make_float3(0.0f, -2.99f, 1.0f), make_float3(2.0f, 2.0f, 2.0f));
 	//load_obj("assets/models/teapot.obj", roughD, make_float3(0.0f, -3.0f, -0.0f), make_float3(1.0f, 1.0f, 1.0f));
 
 	// lights

@@ -42,6 +42,7 @@ enum class MaterialType {
     SPECULAR_MICROFACET,
     SMOOTH_DIELECTRIC,
     ROUGH_DIELECTRIC,
+    DISNEY,
     EMISSIVE_DIFFUSE
 };
 
@@ -54,6 +55,24 @@ struct Material {
     float alpha;
     uint32_t alphaTexIdx;
     float eta;
+
+    // disney params
+    float metallic;
+    float roughness;
+    float specular;
+    float specularTint;
+    float anisotropic;
+    float sheen;
+    float sheenTint;
+    float clearcoat;
+    float clearcoatGloss;
+    float specTrans;
+    float diffTrans;
+    float flatness;
+    float scatterDistance;
+    float3 transmittanceColor;
+    bool thin = false;
+
     bool isDelta = false;
     bool hasNormalMap = false;
 };
