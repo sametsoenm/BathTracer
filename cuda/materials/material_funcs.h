@@ -5,7 +5,7 @@
 namespace material {
 
 	__forceinline__ __device__ float3 fresnel_schlick(const float3& f0, const float cos_theta) {
-		return f0 + (1.0f - f0) * pow((1.0f - cos_theta), 5.0f);
+		return f0 + (1.0f - f0) * powf((1.0f - cos_theta), 5.0f);
 	}
 
 	__forceinline__ __device__ float fresnel_dielectric(
@@ -44,6 +44,12 @@ namespace material {
 	__forceinline__ __device__ float G_smith(const float alpha,
 		const float3& wi, const float3& wo, const float3& wh) {
 		return G1_smith(alpha, wi, wh) * G1_smith(alpha, wo, wh);
+	}
+
+	__forceinline__ __device__ float GTR1_burley(const float alpha, const float cos_theta) {
+		const float a2 = alpha * alpha;
+		const float denom = M_PIf * logf(a2) * (1.0f + (a2 - 1.0f) * cos_theta * cos_theta);
+		return (a2 - 1.0f) / denom;
 	}
 
 }
