@@ -59,7 +59,6 @@ struct Material {
     // disney params
     float metallic;
     float roughness;
-    float specular;
     float specularTint;
     float anisotropic;
     float sheen;

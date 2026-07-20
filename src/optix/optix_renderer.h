@@ -67,6 +67,7 @@ public:
 
 	void resetAccumulation();
 	void reloadScene();
+	void reloadMaterials();
 	void reloadEnvironment();
 
 	const OptixScene& scene() const { return *_scene; }

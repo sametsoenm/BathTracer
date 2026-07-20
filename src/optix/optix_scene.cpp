@@ -191,7 +191,6 @@ uint32_t OptixScene::addDisneyMaterial(
 	const glm::vec3& baseColor,
 	const float metallic,
 	const float roughness,
-	const float specular,
 	const float specularTint,
 	const float anisotropic,
 	const float sheen,
@@ -204,16 +203,11 @@ uint32_t OptixScene::addDisneyMaterial(
 	const float eta,
 	const bool thin) {
 
-	Texture tex(baseColor);
-	_textures.push_back(tex);
-
 	Material mat{};
 	mat.type = MaterialType::DISNEY;
 	mat.color = make_float3(baseColor.x, baseColor.y, baseColor.z);
-	mat.colorTexIdx = _textures.size() - 1;
 	mat.metallic = metallic;
 	mat.roughness = roughness;
-	mat.specular = specular;
 	mat.specularTint = specularTint;
 	mat.anisotropic = anisotropic;
 	mat.sheen = sheen;
@@ -246,7 +240,22 @@ void OptixScene::cornellScene() {
 	auto metal = addSpecularMicrofacetMaterial(glm::vec3(0.560f, 0.570f, 0.580f), 0.1f);
 	auto roughD = addRoughDielectricMaterial(1.85f, 0.1f);
 	auto texDiffuse = addLambertDiffuseMaterial("assets/textures/testarossa.jpg");
-	auto disney = addDisneyMaterial(glm::vec3(0.8f, 0.2f, 0.2f));
+	auto disney = addDisneyMaterial(
+		glm::vec3(0.9f, 0.9f, 0.9f), // baseColor
+		1.0f, // metallic
+		0.0f, // roughness
+		0.0f, // specularTint
+		0.0f, // anisotropic
+		0.0f, // sheen
+		0.0f, // sheenTint
+		0.0f, // clearcoat
+		0.0f, // clearcoatGloss
+		0.0f, // specTrans
+		0.0f, // diffTrans
+		0.5f, // flatness
+		1.5f, // eta
+		false // thin
+	);
 
 	//cornell box
 	{
@@ -339,7 +348,7 @@ void OptixScene::cornellScene() {
 			glm::vec3(-5.0f, -5.0f, -5.0f),
 			glm::vec3(5.0f, -5.0f, -5.0f),
 			glm::vec3(-5.0f, 5.0f, -5.0f),
-			texDiffuse,
+			whiteDiffuse,
 			glm::vec2(0.0f, 0.0f),
 			glm::vec2(1.0f, 0.0f),
 			glm::vec2(0.0f, 1.0f)
@@ -348,7 +357,7 @@ void OptixScene::cornellScene() {
 			glm::vec3(-5.0f, 5.0f, -5.0f),
 			glm::vec3(5.0f, -5.0f, -5.0f),
 			glm::vec3(5.0f, 5.0f, -5.0f),
-			texDiffuse,
+			whiteDiffuse,
 			glm::vec2(0.0f, 1.0f),
 			glm::vec2(1.0f, 0.0f),
 			glm::vec2(1.0f, 1.0f)

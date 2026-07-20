@@ -630,6 +630,19 @@ void OptixRenderer::reloadScene() {
 
 }
 
+void OptixRenderer::reloadMaterials() {
+
+    const auto& mats = _scene->mats();
+    if (_state.d_mats == 0 || mats.empty())
+        return;
+
+    CUDA_CHECK(cuMemcpyHtoD(
+        _state.d_mats,
+        mats.data(),
+        mats.size() * sizeof(Material)
+    ));
+}
+
 void OptixRenderer::reloadEnvironment() {
 
     // destroy old

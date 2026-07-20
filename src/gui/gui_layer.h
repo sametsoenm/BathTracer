@@ -23,4 +23,5 @@ public:
 
 private:
     char _filenameBuffer[256] = "output.png";
+    int _selectedMaterialIdx = 0;
 };

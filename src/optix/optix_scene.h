@@ -42,7 +42,6 @@ public:
 		const glm::vec3& baseColor,
 		float metallic = 0.0f,
 		float roughness = 0.5f,
-		float specular = 0.5f,
 		float specularTint = 0.0f,
 		float anisotropic = 0.0f,
 		float sheen = 0.0f,
@@ -58,6 +57,7 @@ public:
 	const std::vector<GeometryData>& geometry() const { return _geometry; }
 	const std::vector<Light>& lights() const { return _lights; }
 	const std::vector<Material>& mats() const { return _mats; }
+	std::vector<Material>& mats() { return _mats; }
 	const std::vector<Texture>& textures() const { return _textures; }
 	const Camera& cam() const { return _cam; }
 	Camera& cam() { return _cam; }

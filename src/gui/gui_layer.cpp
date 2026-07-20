@@ -9,6 +9,9 @@
 #include "optix/optix_renderer.h"
 #include "util/io.h"
 
+#include <algorithm>
+#include <string>
+
 
 GuiLayer::GuiLayer(GLFWwindow* window) {
     IMGUI_CHECKVERSION();
@@ -116,7 +119,94 @@ void GuiLayer::draw(const types::RenderStatistics& stats,
             if (selected)
                 ImGui::SetItemDefaultFocus();
         }
-        ImGui::EndCombo();
+            ImGui::EndCombo();
+    }
+
+    ImGui::Separator();
+
+    ImGui::Text("Materials");
+    auto& mats = renderer.scene().mats();
+    if (mats.empty()) {
+        ImGui::TextDisabled("No materials");
+    }
+    else {
+        _selectedMaterialIdx = std::clamp(
+            _selectedMaterialIdx,
+            0,
+            static_cast<int>(mats.size()) - 1);
+
+        const Material& selectedMat = mats[_selectedMaterialIdx];
+        std::string preview =
+            std::to_string(_selectedMaterialIdx) + " - " +
+            std::string(magic_enum::enum_name(selectedMat.type));
+
+        ImGui::SetNextItemWidth(180.0f);
+        if (ImGui::BeginCombo("Material", preview.c_str())) {
+            for (int i = 0; i < static_cast<int>(mats.size()); ++i) {
+                const std::string label =
+                    std::to_string(i) + " - " +
+                    std::string(magic_enum::enum_name(mats[i].type));
+                const bool selected = i == _selectedMaterialIdx;
+                if (ImGui::Selectable(label.c_str(), selected)) {
+                    _selectedMaterialIdx = i;
+                }
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        Material& mat = mats[_selectedMaterialIdx];
+        bool materialChanged = false;
+
+        switch (mat.type) {
+        case MaterialType::LAMBERT_DIFFUSE:
+            ImGui::TextDisabled("Diffuse color is texture-backed in this scene.");
+            break;
+        case MaterialType::EMISSIVE_DIFFUSE:
+            materialChanged |= ImGui::ColorEdit3("Emission", &mat.emission.x);
+            break;
+        case MaterialType::MIRROR:
+            materialChanged |= ImGui::ColorEdit3("Reflectance", &mat.reflectance.x);
+            break;
+        case MaterialType::SMOOTH_DIELECTRIC:
+            materialChanged |= ImGui::SliderFloat("Eta", &mat.eta, 1.0f, 2.5f);
+            break;
+        case MaterialType::ROUGH_DIELECTRIC:
+            materialChanged |= ImGui::SliderFloat("Eta", &mat.eta, 1.0f, 2.5f);
+            materialChanged |= ImGui::SliderFloat("Alpha", &mat.alpha, 0.001f, 1.0f);
+            break;
+        case MaterialType::SPECULAR_MICROFACET:
+            materialChanged |= ImGui::ColorEdit3("F0", &mat.color.x);
+            materialChanged |= ImGui::SliderFloat("Alpha", &mat.alpha, 0.001f, 1.0f);
+            ImGui::TextDisabled("Texture-backed F0/alpha materials may ignore these values.");
+            break;
+        case MaterialType::DISNEY:
+            materialChanged |= ImGui::ColorEdit3("Base Color", &mat.color.x);
+            materialChanged |= ImGui::SliderFloat("Metallic", &mat.metallic, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Roughness", &mat.roughness, 0.001f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Specular Tint", &mat.specularTint, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Anisotropic", &mat.anisotropic, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Sheen", &mat.sheen, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Sheen Tint", &mat.sheenTint, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Clearcoat", &mat.clearcoat, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Clearcoat Gloss", &mat.clearcoatGloss, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Spec Trans", &mat.specTrans, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Diff Trans", &mat.diffTrans, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Flatness", &mat.flatness, 0.0f, 1.0f);
+            materialChanged |= ImGui::SliderFloat("Eta", &mat.eta, 1.0f, 2.5f);
+            materialChanged |= ImGui::Checkbox("Thin", &mat.thin);
+            break;
+        default:
+            ImGui::TextDisabled("Unsupported material type");
+            break;
+        }
+
+        if (materialChanged) {
+            renderer.reloadMaterials();
+            renderer.resetAccumulation();
+            renderer.setIsRendering(true);
+        }
     }
 
     ImGui::Separator();

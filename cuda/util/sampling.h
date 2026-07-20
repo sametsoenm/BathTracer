@@ -97,6 +97,14 @@ namespace sampling {
         return wm;
     }
 
+    __forceinline__ __device__ float3 sampleGGXVNDFAnisotropic(
+        const float ax, const float ay, const float3& wo, const float2& u) {
+
+        const float3 woStd = normalize(make_float3(wo.x * ax, wo.y * ay, wo.z));
+        const float3 wmStd = sampleGGXVNDFHemisphere(u, woStd);
+        return normalize(make_float3(wmStd.x * ax, wmStd.y * ay, max(0.0f, wmStd.z)));
+    }
+
     __forceinline__ __device__ float eval_isotropic_phase_func() {
         return 0.25f / M_PIf;
     }
