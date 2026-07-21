@@ -199,7 +199,7 @@ extern "C" __global__ void __closesthit__ch()
     prd.prevScatterPdf = __uint_as_float(optixGetPayload_19());
 
     // shading
-    shadeNEE(prd, data, mat);
+    shadeMIS(prd, data, mat);
 
 
     optixSetPayload_0(__float_as_uint(prd.attenuation.x));

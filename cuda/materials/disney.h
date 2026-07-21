@@ -137,12 +137,7 @@ __forceinline__ __device__ float3 eval_disney_diffuse_lobe(
 	const float3& wo,
 	const float3& wh,
 	const float3& wi,
-	const HitData& data,
-	float& forwardPdf,
-	float& reversePdf) {
-
-	forwardPdf = 0.0f;
-	reversePdf = 0.0f;
+	const HitData& data) {
 
 	Onb onb(data.shading_normal);
 	const float3 wo_local = onb.to_local(wo);
@@ -155,9 +150,6 @@ __forceinline__ __device__ float3 eval_disney_diffuse_lobe(
 	const float cosThetaI = wi_local.z;
 	const float cosThetaO = wo_local.z;
 	const float cosThetaD = clamp(dot(wi_local, wh_local), 0.0f, 1.0f);
-
-	forwardPdf = sampling::pdf_cosine_hemisphere(cosThetaI);
-	reversePdf = sampling::pdf_cosine_hemisphere(cosThetaO);
 
 	const float FL = powf(1.0f - cosThetaI, 5.0f);
 	const float FV = powf(1.0f - cosThetaO, 5.0f);
@@ -191,12 +183,7 @@ __forceinline__ __device__ float3 eval_disney_specular_lobe(
 	const float3& wo,
 	const float3& wh,
 	const float3& wi,
-	const HitData& data,
-	float& forwardPdf,
-	float& reversePdf) {
-
-	forwardPdf = 0.0f;
-	reversePdf = 0.0f;
+	const HitData& data) {
 
 	Onb onb(data.shading_normal);
 	const float3 wo_local = onb.to_local(wo);
@@ -223,9 +210,6 @@ __forceinline__ __device__ float3 eval_disney_specular_lobe(
 
 	const float3 F = disney_fresnel(surface, wo_local, wh_local, wi_local);
 
-	forwardPdf = D * wh_local.z / (4.0f * wo_dot_wh_abs);
-	reversePdf = D * wh_local.z / (4.0f * wi_dot_wh_abs);
-
 	const float V = dot(data.geo_normal, wi) <= 0.0f ? 0.0f : 1.0f;
 	return clamp(V * F * D * G / (4.0f * wo_local.z), 0.0f, 1e36f);
 }
@@ -235,12 +219,7 @@ __forceinline__ __device__ float eval_disney_clearcoat_lobe(
 	const float3& wo,
 	const float3& wh,
 	const float3& wi,
-	const HitData& data,
-	float& forwardPdf,
-	float& reversePdf) {
-
-	forwardPdf = 0.0f;
-	reversePdf = 0.0f;
+	const HitData& data) {
 
 	if (surface.clearcoat <= 0.0f)
 		return 0.0f;
@@ -266,9 +245,6 @@ __forceinline__ __device__ float eval_disney_clearcoat_lobe(
 	const float F = material::fresnel_schlick(make_float3(0.04f), wi_dot_wh).x;
 	const float G = material::G_smith(0.25f, wi_local, wo_local, wh_local);
 
-	forwardPdf = D / (4.0f * wo_dot_wh_abs);
-	reversePdf = D / (4.0f * wi_dot_wh_abs);
-
 	const float brdf = 0.25f * surface.clearcoat * D * F * G;
 	return brdf * wi_local.z;
 }
@@ -278,12 +254,7 @@ __forceinline__ __device__ float3 eval_disney_spec_transmission_lobe(
 	const float3& wo,
 	const float3& wh,
 	const float3& wi,
-	const HitData& data,
-	float& forwardPdf,
-	float& reversePdf) {
-
-	forwardPdf = 0.0f;
-	reversePdf = 0.0f;
+	const HitData& data) {
 
 	Onb onb(data.shading_normal);
 	const float3 wo_local = onb.to_local(wo);
@@ -330,9 +301,6 @@ __forceinline__ __device__ float3 eval_disney_spec_transmission_lobe(
 	const float c = (wi_dot_wh_abs * wo_dot_wh_abs) / (wi_dot_n_abs * wo_dot_n_abs);
 	const float t = n2 / (denom * denom);
 	const float3 transmission = color * c * t * (1.0f - F) * G * D;
-
-	forwardPdf = D * wh_local.z / (denom * denom);
-	reversePdf = D * wh_local.z / (reverseDenom * reverseDenom);
 
 	const float V = dot(data.geo_normal, wi) == 0.0f ? 0.0f : 1.0f;
 	return V * transmission * wi_dot_n_abs;
@@ -470,9 +438,7 @@ __forceinline__ __device__ BSDFSample sample_disney_specular_lobe(
 	const float3 wi = normalize(onb.to_world(wi_local));
 	const float3 wh = normalize(onb.to_world(wh_local));
 
-	float forwardPdf = 0.0f;
-	float reversePdf = 0.0f;
-	const float3 bsdfCos = eval_disney_specular_lobe(surface, wo, wh, wi, data, forwardPdf, reversePdf);
+	const float3 bsdfCos = eval_disney_specular_lobe(surface, wo, wh, wi, data);
 
 	s.wi = wi;
 	s.pdf = pdf;
@@ -525,9 +491,7 @@ __forceinline__ __device__ BSDFSample sample_disney_clearcoat_lobe(
 	const float3 wi = normalize(onb.to_world(wi_local));
 	const float3 wh = normalize(onb.to_world(wh_local));
 
-	float forwardPdf = 0.0f;
-	float reversePdf = 0.0f;
-	const float bsdfCos = eval_disney_clearcoat_lobe(surface, wo, wh, wi, data, forwardPdf, reversePdf);
+	const float bsdfCos = eval_disney_clearcoat_lobe(surface, wo, wh, wi, data);
 
 	s.wi = wi;
 	s.pdf = pdf;
@@ -638,78 +602,120 @@ __forceinline__ __device__ float pdf_disney(
 	const Material& mat,
 	const HitData& data) {
 
-	(void)wo;
-	(void)wi;
-	(void)mat;
-	(void)data;
-	return 0.0f;
-}
-
-// evaluates bsdf * cosTheta
-__forceinline__ __device__ float3 eval_disney(
-	const float3& wo,
-	const float3& wi,
-	const Material& mat,
-	const HitData& data,
-	float& forwardPdf,
-	float& reversePdf) {
-
 	const DisneySurface surface = make_disney_surface(mat, data);
-	const float3 wh = normalize(wo + wi);
 	const DisneyLobePdfs lobePdfs = calculate_disney_lobe_pdfs(surface);
-
-	forwardPdf = 0.0f;
-	reversePdf = 0.0f;
 
 	Onb onb(data.shading_normal);
 	const float3 wo_local = onb.to_local(wo);
 	const float3 wi_local = onb.to_local(wi);
-	const float wo_dot_n = wo_local.z;
-	const float wi_dot_n = wi_local.z;
-	const bool upperHemisphere = wo_dot_n > 0.0f && wi_dot_n > 0.0f;
 
-	float3 result = make_float3(0.0f);
-	float lobeForwardPdf = 0.0f;
-	float lobeReversePdf = 0.0f;
+	if (wo_local.z == 0.0f || wi_local.z == 0.0f)
+		return 0.0f;
 
-	if (upperHemisphere && surface.clearcoat > 0.0f) {
-		const float clearcoat =
-			eval_disney_clearcoat_lobe(surface, wo, wh, wi, data, lobeForwardPdf, lobeReversePdf);
-		result += make_float3(clearcoat);
-		forwardPdf += lobePdfs.clearcoat * lobeForwardPdf;
-		reversePdf += lobePdfs.clearcoat * lobeReversePdf;
+	const bool sameHemisphere = wo_local.z * wi_local.z > 0.0f;
+	const float diffTrans = clamp(surface.diffTrans, 0.0f, 1.0f);
+	const float wi_dot_n_abs = fabsf(wi_local.z);
+	float pdf = 0.0f;
+
+	// diffuse lobe cosine sampling, with optional diffuse transmission branch
+	if (lobePdfs.diffuse > 0.0f) {
+		const float diffuseBranchPdf = sameHemisphere
+			? 1.0f - diffTrans
+			: diffTrans;
+		pdf += lobePdfs.diffuse *
+			sampling::pdf_cosine_hemisphere(wi_dot_n_abs) *
+			diffuseBranchPdf;
 	}
 
-	const float diffuseWeight = (1.0f - surface.metallic) * (1.0f - surface.specTrans);
-	if (diffuseWeight > 0.0f) {
-		const float diffuseReflectWeight = 1.0f - clamp(surface.diffTrans, 0.0f, 1.0f);
-		result += diffuseWeight * diffuseReflectWeight *
-			eval_disney_diffuse_lobe(surface, wo, wh, wi, data, lobeForwardPdf, lobeReversePdf);
+	if (sameHemisphere) {
+		const float3 wh_local = normalize(wo_local + wi_local);
+		const float wo_dot_wh = dot(wo_local, wh_local);
+		const float wi_dot_wh = dot(wi_local, wh_local);
 
-		if (upperHemisphere) {
-			const float3 sheen = eval_disney_sheen_lobe(surface, wo, wh, wi, data);
-			const float V = dot(data.geo_normal, wi) <= 0.0f ? 0.0f : 1.0f;
-			result += V * diffuseWeight * diffuseReflectWeight * sheen * wi_dot_n;
+		if (wh_local.z > 0.0f && wo_dot_wh > 0.0f && wi_dot_wh > 0.0f) {
+			float ax = 0.0f;
+			float ay = 0.0f;
+			anisotropic_params_disney(surface, ax, ay);
+
+			const float D = material::NDF_GTR2_anisotropic(ax, ay, wh_local);
+			const float G1v = material::G1_smith_anisotropic(ax, ay, wo_local, wh_local);
+			const float vndfPdf = G1v * wo_dot_wh * D / wo_local.z;
+
+			// specular reflection lobe
+			if (lobePdfs.specular > 0.0f) {
+				pdf += lobePdfs.specular * vndfPdf / (4.0f * wo_dot_wh);
+			}
+
+			// specular transmission lobe can also sample a reflected fresnel event
+			if (lobePdfs.specTransmission > 0.0f) {
+				const float roughness = surface.thin
+					? thin_transmission_roughness_disney(surface)
+					: surface.roughness;
+				float tax = 0.0f;
+				float tay = 0.0f;
+				material::anisotropic_params_burley(roughness, surface.anisotropic, tax, tay);
+
+				const float tD = material::NDF_GTR2_anisotropic(tax, tay, wh_local);
+				const float tG1v = material::G1_smith_anisotropic_abs(tax, tay, wo_local, wh_local);
+				const float tVndfPdf = tG1v * wo_dot_wh * tD / fabsf(wo_local.z);
+				const float F = material::fresnel_dielectric(wo_dot_wh, 1.0f, surface.eta);
+				pdf += lobePdfs.specTransmission * tVndfPdf * F / (4.0f * wo_dot_wh);
+			}
+
+			// clearcoat lobe
+			if (lobePdfs.clearcoat > 0.0f && surface.clearcoat > 0.0f) {
+				const float alpha = 0.1f + surface.clearcoatGloss * (0.001f - 0.1f);
+				const float cD = material::GTR1_burley(alpha, wh_local.z);
+				pdf += lobePdfs.clearcoat * cD * wh_local.z / (4.0f * wo_dot_wh);
+			}
+		}
+	}
+	else if (lobePdfs.specTransmission > 0.0f) {
+		const float roughness = surface.thin
+			? thin_transmission_roughness_disney(surface)
+			: surface.roughness;
+		float ax = 0.0f;
+		float ay = 0.0f;
+		material::anisotropic_params_burley(roughness, surface.anisotropic, ax, ay);
+
+		float3 wh_local = make_float3(0.0f);
+		float jacobian = 0.0f;
+
+		if (surface.thin) {
+			const float3 reflected_wi_local =
+				make_float3(wi_local.x, wi_local.y, -wi_local.z);
+			wh_local = normalize(wo_local + reflected_wi_local);
+			const float wo_dot_wh = fabsf(dot(wo_local, wh_local));
+			if (wo_dot_wh > 0.0f)
+				jacobian = 1.0f / (4.0f * wo_dot_wh);
+		}
+		else {
+			const float etaI = wo_local.z > 0.0f ? 1.0f : surface.eta;
+			const float etaT = wo_local.z > 0.0f ? surface.eta : 1.0f;
+			const float relativeIor = 1.0f / surface.eta;
+
+			wh_local = normalize(etaT * wi_local + etaI * wo_local);
+			if (dot(wo_local, wh_local) < 0.0f)
+				wh_local = -wh_local;
+
+			const float wo_dot_wh = fabsf(dot(wo_local, wh_local));
+			const float wi_dot_wh = fabsf(dot(wi_local, wh_local));
+			const float denom = wi_dot_wh + relativeIor * wo_dot_wh;
+			if (wi_dot_wh > 0.0f && denom != 0.0f)
+				jacobian = wi_dot_wh / (denom * denom);
 		}
 
-		forwardPdf += lobePdfs.diffuse * lobeForwardPdf;
-		reversePdf += lobePdfs.diffuse * lobeReversePdf;
+		const float wo_dot_wh = fabsf(dot(wo_local, wh_local));
+		if (wh_local.z > 0.0f && wo_dot_wh > 0.0f && jacobian > 0.0f) {
+			const float D = material::NDF_GTR2_anisotropic(ax, ay, wh_local);
+			const float G1v = material::G1_smith_anisotropic_abs(ax, ay, wo_local, wh_local);
+			const float vndfPdf = G1v * wo_dot_wh * D / fabsf(wo_local.z);
+			const float F = material::fresnel_dielectric(wo_dot_wh, 1.0f, surface.eta);
+			pdf += lobePdfs.specTransmission * vndfPdf * (1.0f - F) * jacobian;
+		}
 	}
 
-	const float transWeight = (1.0f - surface.metallic) * surface.specTrans;
-	if (transWeight > 0.0f) {
-		result += transWeight * eval_disney_spec_transmission_lobe(surface, wo, wh, wi, data, lobeForwardPdf, lobeReversePdf);
-		forwardPdf += lobePdfs.specTransmission * lobeForwardPdf;
-		reversePdf += lobePdfs.specTransmission * lobeReversePdf;
-	}
-
-	if (upperHemisphere) {
-		result += eval_disney_specular_lobe(surface, wo, wh, wi, data, lobeForwardPdf, lobeReversePdf);
-		forwardPdf += lobePdfs.specular * lobeForwardPdf;
-		reversePdf += lobePdfs.specular * lobeReversePdf;
-	}
-
-	return result;
+	return pdf;
 }
 
 // evaluates bsdf * cosTheta
@@ -719,9 +725,47 @@ __forceinline__ __device__ float3 eval_disney(
 	const Material& mat,
 	const HitData& data) {
 
-	float forwardPdf = 0.0f;
-	float reversePdf = 0.0f;
-	return eval_disney(wo, wi, mat, data, forwardPdf, reversePdf);
+	const DisneySurface surface = make_disney_surface(mat, data);
+	const float3 wh = normalize(wo + wi);
+
+	Onb onb(data.shading_normal);
+	const float3 wo_local = onb.to_local(wo);
+	const float3 wi_local = onb.to_local(wi);
+	const float wo_dot_n = wo_local.z;
+	const float wi_dot_n = wi_local.z;
+	const bool upperHemisphere = wo_dot_n > 0.0f && wi_dot_n > 0.0f;
+
+	float3 result = make_float3(0.0f);
+
+	if (upperHemisphere && surface.clearcoat > 0.0f) {
+		const float clearcoat =
+			eval_disney_clearcoat_lobe(surface, wo, wh, wi, data);
+		result += make_float3(clearcoat);
+	}
+
+	const float diffuseWeight = (1.0f - surface.metallic) * (1.0f - surface.specTrans);
+	if (diffuseWeight > 0.0f) {
+		const float diffuseReflectWeight = 1.0f - clamp(surface.diffTrans, 0.0f, 1.0f);
+		result += diffuseWeight * diffuseReflectWeight *
+			eval_disney_diffuse_lobe(surface, wo, wh, wi, data);
+
+		if (upperHemisphere) {
+			const float3 sheen = eval_disney_sheen_lobe(surface, wo, wh, wi, data);
+			const float V = dot(data.geo_normal, wi) <= 0.0f ? 0.0f : 1.0f;
+			result += V * diffuseWeight * diffuseReflectWeight * sheen * wi_dot_n;
+		}
+	}
+
+	const float transWeight = (1.0f - surface.metallic) * surface.specTrans;
+	if (transWeight > 0.0f) {
+		result += transWeight * eval_disney_spec_transmission_lobe(surface, wo, wh, wi, data);
+	}
+
+	if (upperHemisphere) {
+		result += eval_disney_specular_lobe(surface, wo, wh, wi, data);
+	}
+
+	return result;
 }
 
 __forceinline__ __device__ BSDFSample sample_disney(
